@@ -10,9 +10,13 @@ Zapišite program, ki v register `A` zapiše ostanek pri deljenju registra `A` z
 
 Zapišite program, ki na sklad zaporedno postavlja števila od 13 do 42.
 
+## Menjava pomnilniških celic
+
+Poleg registrov in sklada lahko podatke shranjujemo tudi v pomnilniške celice. To storimo prek naslovov oblike `[N]`, kjer je `N` zaporedni indeks mesta v pomnilniku, ali `[R]`, kjer je `R` ime registra, v katerem je shranjen indeks. Zapišite program, ki zamenja vsebini pomnilniških celic na naslovih `[A]` in `[B]`.
+
 ## Iskanje najmanjšega števila v seznamu
 
-Zapišite program, ki poišče najmanjše število v danem seznamu. Seznam naj bo podan na začetku pomnilnika in sicer tako, da je na prvih dveh bajtih ukaz za skok na začetek programa, v tretjem bajtu dolžina seznama, v naslednjih bajtih zaporedoma elementi seznama, takoj za njimi pa bajt, v katerega naj se zapiše najmanjše število.
+Zapišite program, ki poišče najmanjše število v danem seznamu. Seznam naj bo podan na začetku pomnilnika in sicer tako, da je v prvih dveh celicah ukaz za skok na začetek programa, v tretji celici dolžina seznama, v naslednjih celicah zaporedoma elementi seznama, takoj za njimi pa celica, v katerega naj se zapiše najmanjše število. Podatke lahko v pomnilnik zapišemo z ukazom `DB`, ki se ne prevede v noben strojni ukaz, ampak samo shrani vrednost v naslednji prostor v pomnilniku. Zgornje podatke bi z njim zapisali takole:
 
     JMP main
     dolzina:
@@ -66,3 +70,7 @@ Delovanje lahko preverite s sledečim programom:
         ADD C, [dolzina]
         CALL uredi          ; pokličemo funkcijo za urejanje
         HLT                 ; prekinemo izvajanje
+
+## Izračun praštevil
+
+Če vam ostaja čas, poskusite napisati program, ki čim bolj učinkovito računa zaporedna praštevila in jih dodaja na sklad. Programe bomo primerjali po hitrosti in porabljenem prostoru, preizkusili pa jih bomo na simulatorju, ki podpira neomejenim skladom ter števila, večja od 255.
