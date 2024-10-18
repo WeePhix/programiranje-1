@@ -1,33 +1,39 @@
+let rec accending_list_gen i n =
+  match i with
+  | _ when i = n -> []
+  | _ when i < n -> i :: (accending_list_gen (i+1) n)
+  | _ -> []
+
+
+let rec filter_mapi_rec f i l =
+    match (l, i) with
+    | (lh::lt, ih::it) when Option.is_some (f ih lh) -> Option.get (f ih lh) :: filter_mapi_rec f it lt
+    | (lh::lt, ih::it) -> filter_mapi_rec f it lt
+    | _ -> []
+
+    
+(*^^^ POMOZNE FUNKCIJE ^^^*)
+
+
 let rec stevke b n =
-  let o = n mod b in
-  let m = (n - o) / b in
-  if (m <= b) then [m; o] else List.flatten [stevke b m; [o]]
+  let r = n mod b in
+  match n with
+  | _ when n < b -> n :: []
+  | _ -> stevke b ((n - r) / b) @ r :: []
 
 
 let rec take n l =
-  if n = 0 || l = []
-    then []
-  else if n = 1
-    then [List.hd l]
-  else
-    [List.hd l] @ take (n-1) (List.tl l)
+  match l with
+  | [] -> []
+  | _ when n = 0 -> []
+  | h::t -> h::(take (n-1) t)
 
 
-let rec drop_while p l =
-  if (p (List.hd l)) then [List.hd l] @ drop_while p (List.tl l)
-  else []
+let rec drop_while p l = 
+  match l with
+  | h::t when p h -> drop_while p t
+  | _ -> l
 
-let filter_mapi p l =
-  let rec index_list i n = if i = n then [] else [i] @ index_list (i+1) n in
-  let indices = index_list 0 (List.length l) in
 
-  let rec checker si sl =
-    if sl = [] then []
-    else
-      let p_on_el = p List.hd si List.hd sl in
-      if not (p_on_el = None) then
-      [List.hd si; p_on_el] @ checker (List.tl si) (List.tl sl)
-    else checker (List.tl si) (List.tl sl) in
-  checker indices l
-
-let l = [1;2;3;4;5;6;7;8;9]
+let rec filter_mapi f l =
+  filter_mapi_rec f (accending_list_gen 0 (List.length l)) l
