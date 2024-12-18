@@ -7,22 +7,30 @@ def concat {A : Type} : List A → List A → List A :=
 #check (concat ["a", "b"] ["c", "d"])
 
 def reverse {A : Type} : List A → List A :=
-  sorry
+  fun
+  | [] => []
+  | x :: xs => concat (reverse xs) [x]
 
 
 #check (reverse ["a", "b", "c", "d"])
 
 def length {A : Type} : List A → Nat :=
-  sorry
+  fun
+  | [] => 0
+  | _ :: xs => 1 + length xs
 
 
 #check (length ["a", "b", "c", "d"])
 
 theorem trd1  {A : Type} {x : A} : reverse [x] = [x] :=
-  sorry
+  by
+  simp [reverse, concat]
 
 theorem trd2 {A : Type} {xs ys : List A} : length (concat xs ys) = length xs + length ys :=
-  sorry
+  by
+    induction xs with
+    | nil => simp [concat, length]
+    | cons x xs' ih => simp [concat, length, ih, Nat.add_assoc]
 
 -- Tega poznamo že iz predavanj
 theorem trd3 {A : Type} {xs : List A} : concat xs [] = xs :=
@@ -30,38 +38,84 @@ theorem trd3 {A : Type} {xs : List A} : concat xs [] = xs :=
     induction xs with
     | nil =>
       simp [concat]
-    | cons x xs' ih =>
-      simp [concat]
-      rw [ih]
+    | cons x xs' ih => simp [concat, ih]
 
 theorem trd4 {A : Type} {xs ys zs : List A} : concat (concat xs ys) zs = concat xs (concat ys zs) :=
-  sorry
+  by
+    induction xs with
+    | nil => simp [concat]
+    | cons x xs' ih => simp [concat, ih]
+
+theorem xs_concat_empty {A: Type} {xs : List A} : concat xs [] = xs :=
+  by
+    induction xs with
+    | nil => simp [concat]
+    | cons x' xs' ih => simp [concat, ih]
 
 theorem trd5 {A : Type} {xs ys : List A} : reverse (concat xs ys) = concat (reverse ys) (reverse xs) :=
-  sorry
+  by
+    induction xs with
+    | nil => simp [reverse, concat, xs_concat_empty]
+    | cons x xs' ih => simp [concat, reverse, ih, trd4]
+
+
+theorem len_list_plus_el {A : Type} {xs : List A} {y : A} : length (concat xs [y]) = 1 + length xs :=
+  by
+    induction xs with
+    | nil => simp [concat, length]
+    | cons x xs' ih => simp [concat, length, ih]
 
 theorem trd6 {A : Type} {xs : List A} : length (reverse xs) = length xs :=
-  sorry
+  by
+    induction xs with
+    | nil => simp [reverse]
+    | cons x xs' ih => simp [reverse, concat, length, len_list_plus_el, ih]
+
+theorem rev_conc_xs_x {A : Type} {xs : List A} {x : A} : reverse (concat xs [x]) = x :: (reverse xs) :=
+  by
+    induction xs with
+    | nil => simp [concat, reverse]
+    | cons x' xs' ih => simp [reverse, ih, trd4, concat]
+
 
 theorem trd7 {A : Type} {xs : List A} : reverse (reverse xs) = xs :=
-  sorry
+  by
+    induction xs with
+    | nil => simp [reverse]
+    | cons x xs' ih => simp [reverse, rev_conc_xs_x, ih]
+
 
 
 def map {A B : Type} : (A → B) → List A → List B :=
-  sorry
+  fun
+  | _, [] => []
+  | f, x::xs => f x :: (map f xs)
 
 theorem map_assoc {A B C : Type} {f : A → B} {g : B → C} {xs : List A} : map g (map f xs) = map (g ∘ f) xs :=
-  sorry
+  by
+    induction xs with
+    | nil => simp [map]
+    | cons x xs' ih => simp [map, ih]
 
 theorem map_id {A : Type} {xs : List A} : map id xs = xs :=
-  sorry
+  by
+    induction xs with
+    | nil => simp [map]
+    | cons x xs' ih => simp [map, ih]
 
 theorem map_concat {A B : Type} {f : A → B} {xs ys : List A} : map f (concat xs ys) = concat (map f xs) (map f ys) :=
-  sorry
+  by
+    induction xs with
+    | nil => simp [map, concat]
+    | cons x xs' ih => simp [map, concat, ih]
 
 
 theorem map_reverse {A B : Type} {f : A → B} {xs : List A} : map f (reverse xs) = reverse (map f xs) :=
-  sorry
+  by
+    induction xs with
+    | nil => simp [reverse, map]
+    | cons x xs' ih =>
+      simp [map, reverse]
 
 inductive tree (A : Type) : Type where
   | empty : tree A
@@ -122,11 +176,19 @@ theorem size_mirror {A : Type} {t : tree A} : size (mirror t) = size t :=
 
 theorem concat2 : concat xs (x :: ys) = concat (concat (xs) [x]) ys :=
   by
-    sorry
+    induction xs with
+    | nil => simp [concat]
+    | cons x' xs' ih =>
+    simp [concat]
+    assumption
 
 -- Definirajte repno rekurzivno funkcijo, ki obrne seznam
-def reverse' {A : Type} : List A → List A :=
-  sorry
+def reverse' {A : Type} (xs : List A) : List A :=
+  let rec aux : List A → List A → List A
+    | [], acc => acc
+    | x' :: xs', acc => aux xs' (x' :: acc)
+
+  aux xs []
 
 -- Dokažite, da je vaša funkcija pravilna
 theorem reverse_eq_reverse' {A : Type} : ∀ {xs : List A}, reverse xs = reverse' xs :=
