@@ -94,11 +94,28 @@ theorem forall_implies' : {A : Type} → {P : Prop} → {Q : A → Prop} →
     apply R
     apply P
 
+
 theorem paradoks_pivca :
   {G : Type} → {P : G → Prop} →
   (g : G) →  -- (g : G) pove, da je v gostilni vsaj en gost
   ∃ (p : G), (P p → ∀ (x : G), P x) := by
-  sorry
+  intro G P g
+  apply Classical.byCases
+  case hpq => -- vsi pijejo
+    intro p
+    exists g -- naj je g tisti gost, ki odloca o tem ali pijejo vsi ali ne
+  case hnpq => -- ne pijejo vsi
+    intro ne_imp -- g pije, a ne pijejo vsi
+    have ne_pijejo_vsi : ¬∀ (x : G), P x := by
+      intro vsi_pijejo
+      apply ne_imp
+      simp [vsi_pijejo]
+    have nekdo_ne_pije : ∃ q : G, ¬ P q := by
+      rw [← Classical.not_forall]
+      exact ne_pijejo_vsi
+    have ⟨p, p_ne_pije⟩ := nekdo_ne_pije -- p je tak gost, ki ne pije
+    exists p
+    simp [p_ne_pije]
 
 /------------------------------------------------------------------------------
  ## Dvojiška drevesa
@@ -150,16 +167,19 @@ theorem visina_zrcali : {A : Type} → (t : Drevo A) → visina (zrcali t) = vis
     simp [zrcali, visina, Nat.max_comm, ihl, ihd]
 
 
-theorem aux : {A : Type} → (l d : Drevo A) → (t : A) → elementi'.aux l (t :: elementi d) = elementi l ++ t :: elementi d := by
-  intro A l d t
-  induction d with
-
+theorem lema : {A : Type} → (t : Drevo A) → ∀ xs : List A, elementi'.aux t xs = elementi' t ++ xs := by
+  intro A t
+  induction t with
+  | prazno => simp [elementi', elementi'.aux]
+  | sestavljeno d x l ihd ihl =>
+    simp [elementi', elementi'.aux]
+    simp [ihl, ihd]
 
 theorem elementi_elementi' : {A : Type} → (t : Drevo A) → elementi t = elementi' t := by
   intro A t
   induction t with
   | prazno => simp [elementi, elementi', elementi'.aux]
-  | sestavljeno l t d ihl ihd =>
+  | sestavljeno l x d ihl ihd =>
     simp [elementi, elementi', elementi'.aux]
-    rw [← elementi']
-    simp [← ihd]
+    rw [← elementi', ← ihd]
+    rw [lema, ← ihl]
