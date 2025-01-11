@@ -18,9 +18,10 @@
 [*----------------------------------------------------------------------------*)
 
 let reverse l =
-  let rec aux l acc = match l with
-  | [] -> acc
-  | h::t -> aux t (h::t)
+  let rec aux l acc =
+    match l with
+    | [] -> acc
+    | h::t -> aux t (h::t)
   in
   aux l []
 
