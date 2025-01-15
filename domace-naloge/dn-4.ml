@@ -73,7 +73,8 @@ module Tape : TAPE = struct
       | ' ' :: xs -> trim xs
       | l -> l
     in
-    left |> reverse [] |> trim |> reverse [], right |> reverse [] |> trim |> reverse []
+    let final = left |> reverse [] |> trim |> reverse [], right |> reverse [] |> trim |> reverse [] in
+    if snd final = [] then fst final, [' '] else final
 
   let read (t : t) =
     match snd t with
@@ -85,9 +86,8 @@ module Tape : TAPE = struct
   let print (t : t) =
     let left, right = reverse [] (fst t), snd t in
     let _ = List.map print_char (left @ right) in
-    let _ = print_char '\n' in
-    let _ = print_string ((String.make (List.length left) ' ') ^ "^") in
-    print_char '\n'
+    let _ = print_newline () in
+    print_string ((String.make (List.length left) ' ') ^ "^" ^ "\n")
 end
 
 let primer_trak = Tape.(
@@ -130,6 +130,15 @@ AB!DE
  kode.
 [*----------------------------------------------------------------------------*)
 
+open Map
+module OrderedKey = struct
+  type t = state * char
+  let compare = compare
+  let make s c : t = (s, c)
+end
+module States = Map.Make(OrderedKey)
+
+
 module type MACHINE = sig
   type t
   val make : state -> state list -> t
@@ -138,16 +147,22 @@ module type MACHINE = sig
   val step : t -> state -> Tape.t -> (state * Tape.t) option
 end
 
+
 module Machine : MACHINE = struct
   type t = {
     initial : state;
     states : state list;
-    transitions : ((state * char) * (state * char * direction)) array
+    transitions : (state * char * direction) States.t
     }
-  let make s ss : t = {initial = s; states = ss;transitions = [||]}
+  let make s ss : t = {initial = s; states = ss; transitions = States.empty}
   let initial (t: t) = t.initial
-  let add_transition s c s' c' d t = t
-  let step _ _ _ = None
+  let add_transition (s : state) (c : char) (s' : state) (c' : char) (d: direction) (t : t) : t =
+    {t with transitions = States.add (OrderedKey.make s c) (s', c', d) t.transitions}
+  let step (t : t) (state : state) (tape : Tape.t) =
+    let change = States.find_opt (OrderedKey.make state (Tape.read tape)) t.transitions in
+    match change with
+    | None -> None
+    | Some (s, c, d) -> Some (s, Tape.move d (Tape.write c tape))
 end
 (*----------------------------------------------------------------------------*
  Primer stroja "Binary Increment" na <http://turingmachine.io> lahko
@@ -175,8 +190,16 @@ let binary_increment =
  izvajanja.
 [*----------------------------------------------------------------------------*)
 
-let slow_run _ _ = ()
-
+let slow_run machine tape =
+  let actual_tape = Tape.make tape in
+  let rec aux = function
+  | None -> ()
+  | Some (s, t) ->
+    let _ = Tape.print t in
+    let _ = print_string (s ^ "\n") in
+    aux (Machine.step machine s t)
+  in
+  aux (Some (Machine.initial machine, actual_tape))
 let primer_slow_run =
   slow_run binary_increment "1011"
 (*
@@ -184,25 +207,25 @@ let primer_slow_run =
 ^
 right
 1011
-  ^
+ ^
 right
 1011
   ^
 right
 1011
-    ^
+   ^
 right
 1011
     ^
 right
 1011
-    ^
+   ^
 carry
 1010
   ^
 carry
 1000
-  ^
+ ^
 carry
 1100
 ^
@@ -210,7 +233,18 @@ done
 *)
 (* val primer_slow_run : unit = () *)
 
-let speed_run _ _ = ()
+let speed_run machine tape =
+  let initial = Machine.initial machine in
+  let actual_tape = Tape.make tape in
+  let rec aux acc = function
+  | None -> acc
+  | Some (s, t) ->
+    let new_state = Machine.step machine s t in
+    aux (t :: acc) (new_state)
+  in
+  match aux [] (Some (initial, actual_tape)) with
+  | [] -> Tape.print actual_tape
+  | x :: xs -> Tape.print (x)
 
 let primer_speed_run =
   speed_run binary_increment "1011"
@@ -252,6 +286,22 @@ let primer_speed_run =
     for_characters "0 " @@ write_switch_and_move '1' "done" Left
   ]   *)
 (* val binary_increment' : Machine.t = <abstr> *)
+
+let x = for_state "carry" [
+  for_character '1' @@ switch_and_move "carry" Left;
+  for_characters "0 " @@ write_switch_and_move '1' "done" Left
+] 
+for_state "right" [
+  for_characters "01" @@ move Right;
+  for_character ' ' @@ switch_and_move "carry" Left
+]
+Machine.make "right" ["carry"; "done"]
+
+
+let rec for_state (s : state) (transitions) (machine : Machine.t) =
+  match transitions with
+  | [] -> machine
+  | (s, c, s', c', d) :: xs -> for_state s xs (Machine.add_transition s c s' c' d machine)
 
 (*----------------------------------------------------------------------------*
  ## Primeri Turingovih strojev
