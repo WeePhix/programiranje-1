@@ -275,6 +275,7 @@ let primer_speed_run =
  Implementacijo in tipe ugotovite sami.
 [*----------------------------------------------------------------------------*)
 
+
 (* let binary_increment' =
   Machine.make "right" ["carry"; "done"]
   |> for_state "right" [
@@ -287,22 +288,44 @@ let primer_speed_run =
   ]   *)
 (* val binary_increment' : Machine.t = <abstr> *)
 
-let x = for_state "carry" [
-  for_character '1' @@ switch_and_move "carry" Left;
-  for_characters "0 " @@ write_switch_and_move '1' "done" Left
-] 
-for_state "right" [
-  for_characters "01" @@ move Right;
-  for_character ' ' @@ switch_and_move "carry" Left
-]
-Machine.make "right" ["carry"; "done"]
-
-
-let rec for_state (s : state) (transitions) (machine : Machine.t) =
+let rec for_state s (transitions : (state -> Machine.t -> Machine.t) list) m =
   match transitions with
-  | [] -> machine
-  | (s, c, s', c', d) :: xs -> for_state s xs (Machine.add_transition s c s' c' d machine)
+  | [] -> m
+  | x :: xs -> for_state s xs (x s m)
 
+let for_character c (t : state -> char -> Machine.t -> Machine.t) s m = t s c m
+
+let for_characters text (t : state -> char -> Machine.t -> Machine.t) s m =
+  let rec aux acc = function
+    | "" -> acc
+    | st when String.length st = 1 -> for_character st.[0] t s acc
+    | st when String.length st > 1 -> aux (for_character st.[0] t s acc) (String.sub st 1 (String.length st - 1))
+    | _ -> assert false
+  in
+  aux m text
+
+let move d s c m = Machine.add_transition s c s c d m
+let switch_and_move s' d s c m = Machine.add_transition s c s' c d m
+let write_and_move c' d s c m = Machine.add_transition s c s c' d m
+let write_switch_and_move c' s' d s c m = Machine.add_transition s c s' c' d m
+  
+
+
+let binary_increment' =
+  Machine.make "right" ["carry"; "done"]
+  |> for_state "right" [
+    for_characters "01" @@ move Right;
+    for_character ' ' @@ switch_and_move "carry" Left
+  ]
+  |> for_state "carry" [
+    for_character '1' @@ write_and_move '0' Left;
+    for_characters "0 " @@ write_switch_and_move '1' "done" Left
+  ]
+
+let _ = speed_run binary_increment' "101110111"
+
+
+let _ = print_string "\n\n\n=====================================\n=====================================\n=====================================\n\n\n"
 (*----------------------------------------------------------------------------*
  ## Primeri Turingovih strojev
 [*----------------------------------------------------------------------------*)
@@ -324,9 +347,70 @@ let rec for_state (s : state) (transitions) (machine : Machine.t) =
  Sestavite Turingov stroj, ki začetni niz obrne na glavo.
 [*----------------------------------------------------------------------------*)
 
-let reverse = ()
+let reverse = Machine.make "read" ["fst0>"; "fst1>"; "w0<"; "w1<"; "w0>"; "w1>"; "r>"; "c0<"; "c1<"; "c0>"; "c1>"; "ret"; "done"] |>
+  for_state "read" [
+    for_character '0' @@ write_switch_and_move 'o' "fst0>" Right;
+    for_character '1' @@ write_switch_and_move 'i' "fst1>" Right
+  ] |>
+  for_state "fst0>" [
+    for_character ' ' @@ switch_and_move "w0<" Left;
+    for_character '0' @@ write_and_move 'o' Right;
+    for_character '1' @@ write_and_move 'i' Right
+  ] |>
+  for_state "fst1>" [
+    for_character ' ' @@ switch_and_move "w1<" Left;
+    for_character '0' @@ write_and_move 'o' Right;
+    for_character '1' @@ write_and_move 'i' Right
+  ] |>
+  for_state "w0<" [
+    for_character 'o' @@ write_switch_and_move '0' "c0<" Left;
+    for_character 'i' @@ write_switch_and_move '0' "c1<" Left;
+    for_characters "01 " @@ switch_and_move "ret" Left
+  ] |>
+  for_state "w1<" [
+    for_character 'o' @@ write_switch_and_move '1' "c0<" Left;
+    for_character 'i' @@ write_switch_and_move '1' "c1<" Left;
+    for_characters "01 " @@ switch_and_move "ret" Left
+  ] |>
+  for_state "w0>" [
+    for_character 'o' @@ write_switch_and_move '0' "r>" Right;
+    for_character 'i' @@ write_switch_and_move '0' "r>" Right;
+    for_characters "01 " @@ switch_and_move "ret" Left
+  ] |>
+  for_state "w1>" [
+    for_character 'o' @@ write_switch_and_move '1' "r>" Right;
+    for_character 'i' @@ write_switch_and_move '1' "r>" Right;
+    for_characters "01 " @@ switch_and_move "ret" Left
+  ] |>
+  for_state "r>" [
+    for_character 'o' @@ switch_and_move "c0>" Right;
+    for_character 'i' @@ switch_and_move "c1>" Right;
+    for_characters "01" @@ switch_and_move "ret" Left
+  ] |>
+  for_state "c0<" [
+    for_characters "oi" @@ move Left;
+    for_characters " 01" @@ switch_and_move "w0>" Right
+  ] |>
+  for_state "c1<" [
+    for_characters "oi" @@ move Left;
+    for_characters " 01" @@ switch_and_move "w1>" Right
+  ] |>
+  for_state "c0>" [
+    for_characters "oi" @@ move Right;
+    for_characters " 01" @@ switch_and_move "w0<" Left
+  ] |>
+  for_state "c1>" [
+    for_characters "oi" @@ move Right;
+    for_characters " 01" @@ switch_and_move "w1<" Left
+  ] |>
+  for_state "ret" [
+    for_characters "01" @@ move Left;
+    for_character ' ' @@ switch_and_move "done" Right
+  ]
 
-let primer_reverse = speed_run reverse "0000111001"
+
+
+let primer_reverse = slow_run reverse "0000111001"
 (* 
 1001110000          
 ^
@@ -341,11 +425,45 @@ let primer_reverse = speed_run reverse "0000111001"
  Sestavite Turingov stroj, ki podvoji začetni niz.
 [*----------------------------------------------------------------------------*)
 
-let duplicate = ()
+let duplicate = Machine.make "fstread" ["fst0"; "fst1"; "replace"; "left"; "c0"; "c1"; "done"] |>
+  for_state "fstread" [
+    for_character '0' @@ write_switch_and_move 'o' "fst0" Right;
+    for_character '1' @@ write_switch_and_move 'i' "fst1" Right
+  ] |>
+  for_state "fst0" [
+    for_character '0' @@ write_and_move 'o' Right;
+    for_character '1' @@ write_switch_and_move 'i' "fst1" Right;
+    for_character ' ' @@ write_switch_and_move '0' "replace" Left
+  ] |>
+  for_state "fst1" [
+    for_character '0' @@ write_switch_and_move 'o' "fst0" Right;
+    for_character '1' @@ write_and_move 'i' Right;
+    for_character ' ' @@ write_switch_and_move '1' "replace" Left
+  ] |>
+  for_state "replace" [
+    for_character 'o' @@ write_switch_and_move '0' "left" Left;
+    for_character 'i' @@ write_switch_and_move '1' "left" Left
+  ] |>
+  for_state "left" [
+    for_characters "01" @@ move Left;
+    for_character 'o' @@ write_switch_and_move '0' "c0" Right;
+    for_character 'i' @@ write_switch_and_move '1' "c1" Right;
+    for_character ' ' @@ switch_and_move "done" Right
+  ] |>
+  for_state "c0" [
+    for_character '0' @@ move Right;
+    for_character '1' @@ write_switch_and_move '0' "c1" Right;
+    for_character ' ' @@ write_switch_and_move '0' "left" Left
+  ] |>
+  for_state "c1" [
+    for_character '1' @@ move Right;
+    for_character '0' @@ write_switch_and_move '1' "c0" Right;
+    for_character ' ' @@ write_switch_and_move '1' "left" Left
+  ]
 
 let primer_duplicate = speed_run duplicate "010011"
 (* 
-001100001111       
+001100001111
 ^
 *)
 (* val primer_duplicate : unit = () *)
@@ -359,7 +477,7 @@ let primer_duplicate = speed_run duplicate "010011"
  v dvojiškem zapisu, na koncu pa naj bo na traku zapisanih natanko $n$ enic.
 [*----------------------------------------------------------------------------*)
 
-let to_unary = ()
+let to_unary = Machine.make "start" []
 
 let primer_to_unary = speed_run to_unary "1010"
 (* 
@@ -378,7 +496,7 @@ let primer_to_unary = speed_run to_unary "1010"
  dvojiškem zapisu.
 [*----------------------------------------------------------------------------*)
 
-let to_binary = ()
+let to_binary = Machine.make "start" []
 
 let primer_to_binary = speed_run to_binary (String.make 42 '1')
 (* 
@@ -386,3 +504,29 @@ let primer_to_binary = speed_run to_binary (String.make 42 '1')
 ^
 *)
 (* val primer_to_binary : unit = () *)
+
+let busy_beaver = Machine.make "A" ["B"; "C"; "D"; "E"] |>
+  for_state "A" [
+    for_character ' ' @@ write_switch_and_move '1' "B" Right;
+    for_character '1' @@ write_switch_and_move ' ' "D" Left
+  ] |>
+  for_state "B" [
+    for_character ' ' @@ switch_and_move "C" Right;
+    for_character '1' @@ switch_and_move "D" Left
+  ] |>
+  for_state "C" [
+    for_character ' ' @@ write_switch_and_move '1' "A" Left;
+    for_character '1' @@ write_switch_and_move ' ' "A" Right
+  ] |>
+  for_state "D" [
+    for_character ' ' @@ write_switch_and_move '1' "E" Left;
+    for_character '1' @@ switch_and_move "B" Left
+  ] |>
+  for_state "E" [
+    for_character ' ' @@ switch_and_move "A" Left;
+  ]
+
+
+
+
+(*let speed_test = slow_run busy_beaver ""*)
